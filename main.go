@@ -40,20 +40,25 @@ func main() {
 
 		err := ctx.Bind(&request)
 
-		if err != nil || (strings.HasPrefix(request.Method, "eth_") || tools.Contains(rpcAllowedMethods, request.Method) == false) {
-			hitButUnallowedMethods[request.Method] = hitButUnallowedMethods[request.Method] + 1
-
-			return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32601, fmt.Sprintf("the method %s does not exist/is not available", request.Method)))
+		if err != nil {
+			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32600, "The JSON sent is not a valid Request object."))
 		}
-		jsonValue, _ := json.Marshal(request)
-		res, _ := http.Post("http://127.0.0.1:8545", "application/json", bytes.NewBuffer(jsonValue))
 
-		b, _ := io.ReadAll(res.Body)
+		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(rpcAllowedMethods, request.Method) == true {
+			jsonValue, _ := json.Marshal(request)
+			res, _ := http.Post("http://127.0.0.1:8545", "application/json", bytes.NewBuffer(jsonValue))
 
-		var proxyResult map[string]interface{}
-		_ = json.Unmarshal(b, &proxyResult)
+			b, _ := io.ReadAll(res.Body)
 
-		return ctx.JSON(http.StatusOK, proxyResult)
+			var proxyResult map[string]interface{}
+			_ = json.Unmarshal(b, &proxyResult)
+
+			return ctx.JSON(http.StatusOK, proxyResult)
+		} else {
+			hitButUnallowedMethods[request.Method] = hitButUnallowedMethods[request.Method] + 1
+			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32601, fmt.Sprintf("the method %s does not exist/is not available", request.Method)))
+		}
+
 	})
 
 	err := e.Start("127.0.0.1:9898")
