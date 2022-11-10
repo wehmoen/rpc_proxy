@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"io"
 	"net/http"
+	"os"
 	"rpc-proxy/models"
 	"rpc-proxy/tools"
 	"strings"
@@ -41,7 +42,14 @@ func main() {
 		err := ctx.Bind(&request)
 
 		if err != nil {
+			println(err)
 			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32600, "The JSON sent is not a valid Request object."))
+		}
+
+		security := ctx.Request().Header.Get("x-kong-security") == os.Getenv("RPC_KONG_SECURITY_KEY")
+
+		if security == false {
+			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
 		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(rpcAllowedMethods, request.Method) == true {
