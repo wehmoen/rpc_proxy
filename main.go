@@ -61,6 +61,7 @@ func main() {
 		}
 
 		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(rpcAllowedMethods, request.Method) == true {
+			println("ALLOWED ALLOWED ALLOWED ALLOWED ALLOWED ALLOWED ")
 			jsonValue, _ := json.Marshal(request)
 			res, _ := http.Post("http://127.0.0.1:8545", "application/json", bytes.NewBuffer(jsonValue))
 
