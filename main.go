@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"io"
 	"net/http"
 	"os"
 	"rpc-proxy/models"
@@ -21,7 +19,6 @@ func main() {
 	hitButUnallowedMethods := map[string]int{}
 
 	RpcKongSecurityKey := os.Getenv("RPC_KONG_SECURITY_KEY")
-	KongSkip := os.Getenv("RPC_KONG_SECURITY_SKIP")
 
 	if RpcKongSecurityKey != "" {
 		fmt.Println(fmt.Sprintf("RPC_KONG_SECURITY_KEY is set to: %s", RpcKongSecurityKey))
@@ -30,6 +27,8 @@ func main() {
 	}
 
 	e := echo.New()
+
+	client := resty.New()
 
 	e.Use(middleware.Logger())
 
@@ -49,31 +48,35 @@ func main() {
 		var request models.GRPCRequest
 
 		err := ctx.Bind(&request)
-
 		if err != nil {
-			println(err)
-			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32600, "The JSON sent is not a valid Request object."))
+
+			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32600, "The JSON sent is not a valid RPC Request."))
 		}
 
 		security := ctx.Request().Header.Get("x-kong-security") == RpcKongSecurityKey
 
-		if security == false && KongSkip != "true" {
+		if security == false {
 			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
 		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(rpcAllowedMethods, request.Method) == true {
-			println("ALLOWED ALLOWED ALLOWED ALLOWED ALLOWED ALLOWED ")
-			jsonValue, _ := json.Marshal(request)
-			res, _ := http.Post("http://127.0.0.1:8545", "application/json", bytes.NewBuffer(jsonValue))
 
-			b, _ := io.ReadAll(res.Body)
+			var jsonValue interface{}
 
-			var proxyResult map[string]interface{}
-			_ = json.Unmarshal(b, &proxyResult)
+			resp, err := client.R().
+				SetBody(request).
+				SetResult(&jsonValue). // or SetResult(AuthSuccess{}).
+				Post("http://127.0.0.1:8545")
 
-			println(fmt.Sprintf("Method: %s, Arguments: %v, Result: %v", request.Method, request.Params, proxyResult))
+			if err != nil {
+				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Internal error: "+err.Error()))
+			}
 
-			return ctx.JSON(http.StatusOK, proxyResult)
+			if resp.StatusCode() != http.StatusOK {
+				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Internal error: "+resp.Status()))
+			}
+
+			return ctx.JSON(http.StatusOK, jsonValue)
 		} else {
 			hitButUnallowedMethods[request.Method] = hitButUnallowedMethods[request.Method] + 1
 			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32601, fmt.Sprintf("the method %s does not exist/is not available", request.Method)))
