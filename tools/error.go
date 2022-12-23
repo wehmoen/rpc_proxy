@@ -2,7 +2,7 @@ package tools
 
 import "rpc-proxy/models"
 
-func CreateError(r models.GRPCRequest, c int, m string) models.WhitelistError {
+func CreateError(r models.GRPCRequest, c int64, m string) models.WhitelistError {
 	return models.WhitelistError{
 		Jsonrpc: r.Jsonrpc,
 		Id:      r.Id,
