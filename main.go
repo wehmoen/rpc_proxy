@@ -21,6 +21,7 @@ func main() {
 	hitButUnallowedMethods := map[string]int{}
 
 	RpcKongSecurityKey := os.Getenv("RPC_KONG_SECURITY_KEY")
+	KongSkip := os.Getenv("RPC_KONG_SECURITY_SKIP")
 
 	if RpcKongSecurityKey != "" {
 		fmt.Println(fmt.Sprintf("RPC_KONG_SECURITY_KEY is set to: %s", RpcKongSecurityKey))
@@ -56,7 +57,7 @@ func main() {
 
 		security := ctx.Request().Header.Get("x-kong-security") == RpcKongSecurityKey
 
-		if security == false {
+		if security == false && KongSkip != "true" {
 			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
