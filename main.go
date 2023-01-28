@@ -2,19 +2,38 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-playground/validator"
 	"github.com/go-resty/resty/v2"
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"os"
+	"rpc-proxy/config"
 	"rpc-proxy/models"
 	"rpc-proxy/tools"
+	"rpc-proxy/ws"
 	"strings"
 )
 
+type Validator struct {
+	Validator *validator.Validate
+}
+
+func (v *Validator) Validate(i interface{}) error {
+	if err := v.Validator.Struct(i); err != nil {
+		return err
+	}
+	return nil
+}
+
+func InitValidator() *Validator {
+	return &Validator{Validator: validator.New()}
+}
+
 func main() {
-	rpcAllowedPrefix := []string{"eth_"}
-	rpcAllowedMethods := []string{"web3_clientVersion", "net_version"}
+
+	cfg := config.Get()
 
 	hitButUnallowedMethods := map[string]int{}
 
@@ -26,19 +45,29 @@ func main() {
 		fmt.Println("RPC_KONG_SECURITY_KEY is not set")
 	}
 
+	var upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
 	e := echo.New()
 
 	client := resty.New()
 
 	e.Use(middleware.Logger())
 
+	e.Validator = InitValidator()
+
 	e.GET("/", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"info":             "Ronin RPC Proxy",
-			"allowed_prefixes": rpcAllowedPrefix,
-			"allowed_methods":  rpcAllowedMethods,
+			"allowed_prefixes": cfg.RpcAllowedPrefix,
+			"allowed_methods":  cfg.RpcAllowedMethods,
 		})
 	})
+
+	e.GET("/ws", ws.Setup(upgrader, cfg))
 
 	e.GET("/method_stats", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, hitButUnallowedMethods)
@@ -58,7 +87,7 @@ func main() {
 			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
-		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(rpcAllowedMethods, request.Method) == true {
+		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(cfg.RpcAllowedMethods, request.Method) == true {
 
 			var jsonValue models.RPCResponse
 

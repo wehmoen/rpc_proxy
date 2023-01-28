@@ -1,10 +1,10 @@
 package models
 
 type GRPCRequest struct {
-	Jsonrpc string        `json:"jsonrpc,omitempty"`
-	Method  string        `json:"method,omitempty"`
-	Params  []interface{} `json:"params,omitempty"`
-	Id      int64         `json:"id"`
+	Jsonrpc string        `json:"jsonrpc,omitempty" validate:"required"`
+	Method  string        `json:"method,omitempty" validate:"required"`
+	Params  []interface{} `json:"params,omitempty" validate:"required"`
+	Id      int64         `json:"id" validate:"required"`
 }
 
 type RPCResponse struct {
