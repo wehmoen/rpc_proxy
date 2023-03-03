@@ -8,7 +8,6 @@ import (
 	"rpc-proxy/config"
 	"rpc-proxy/models"
 	"rpc-proxy/tools"
-	"strings"
 )
 
 func Setup(upgrader websocket.Upgrader, cfg *config.Config) echo.HandlerFunc {
@@ -56,7 +55,7 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config) echo.HandlerFunc {
 						return
 					}
 
-					if strings.HasPrefix(rpcRequest.Method, "eth_") == true || tools.Contains(cfg.RpcAllowedMethods, rpcRequest.Method) == true {
+					if cfg.IsAllowedMethod(rpcRequest.Method) {
 						if err != nil {
 							fmt.Println(err)
 							return

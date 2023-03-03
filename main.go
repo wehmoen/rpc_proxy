@@ -13,7 +13,6 @@ import (
 	"rpc-proxy/models"
 	"rpc-proxy/tools"
 	"rpc-proxy/ws"
-	"strings"
 )
 
 type Validator struct {
@@ -87,7 +86,7 @@ func main() {
 			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
-		if strings.HasPrefix(request.Method, "eth_") == true || tools.Contains(cfg.RpcAllowedMethods, request.Method) == true {
+		if cfg.IsAllowedMethod(request.Method) {
 
 			var jsonValue models.RPCResponse
 
