@@ -33,8 +33,8 @@ func (c *Config) IsAllowedMethod(method string) bool {
 
 func Get() *Config {
 	RpcAllowedPrefix := []string{"eth_"}
-	RpcAllowedMethods := []string{"web3_clientVersion", "net_version"}
-	RpcBlacklistedMethods := []string{"eth_sendTransaction", "eth_accounts"}
+	RpcAllowedMethods := []string{"web3_clientVersion", "net_version", "debug_traceTransaction", "debug_dumpBlock", "debug_traceBlock"}
+	RpcBlacklistedMethods := []string{"eth_sendTransaction", "eth_accounts", "eth_sign", "eth_signTransaction", "eth_getWork", "eth_submitWork", "eth_submitHashrate"}
 
 	return &Config{
 		RpcAllowedPrefix:      RpcAllowedPrefix,
