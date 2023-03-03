@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/go-playground/validator"
 	"github.com/go-resty/resty/v2"
@@ -8,6 +9,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"rpc-proxy/config"
 	"rpc-proxy/models"
@@ -32,7 +35,10 @@ func InitValidator() *Validator {
 
 func main() {
 
-	cfg := config.Get()
+	hasGraphql := flag.Bool("graphql", false, "Enable GraphQL")
+	flag.Parse()
+
+	cfg := config.Get(*hasGraphql)
 
 	hitButUnallowedMethods := map[string]int{}
 
@@ -71,6 +77,37 @@ func main() {
 	e.GET("/method_stats", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, hitButUnallowedMethods)
 	})
+
+	if cfg.HasGraphQL {
+
+		graphQlUIUrl, _ := url.Parse("http://localhost:8545/")
+		uiProxy := httputil.NewSingleHostReverseProxy(graphQlUIUrl)
+
+		uiProxy.Director = func(req *http.Request) {
+			req.URL.Scheme = graphQlUIUrl.Scheme
+			req.URL.Host = graphQlUIUrl.Host
+			req.URL.Path = "/graphql/ui"
+		}
+
+		e.GET("/graphql/ui", func(c echo.Context) error {
+			uiProxy.ServeHTTP(c.Response(), c.Request())
+			return nil
+		})
+
+		graphProxy := httputil.NewSingleHostReverseProxy(graphQlUIUrl)
+
+		graphProxy.Director = func(req *http.Request) {
+			req.URL.Scheme = graphQlUIUrl.Scheme
+			req.URL.Host = graphQlUIUrl.Host
+			req.URL.Path = "/graphql"
+		}
+
+		e.POST("/graphql", func(c echo.Context) error {
+			graphProxy.ServeHTTP(c.Response(), c.Request())
+			return nil
+		})
+
+	}
 
 	e.POST("/", func(ctx echo.Context) error {
 		var request models.GRPCRequest
