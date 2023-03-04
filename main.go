@@ -39,7 +39,7 @@ func main() {
 	hasWebsocket := flag.Bool("websocket", false, "Enable Websocket")
 	upstreamRPC := flag.String("upstream", "http://127.0.0.1:8545", "Upstream RPC Host")
 	upstreamWebsocket := flag.String("upstream-ws", "ws://127.0.0.1:8546", "Upstream Websocket Host")
-	httpPort := flag.String("http-port", "9898", "HTTP Port")
+	httpListen := flag.String("http-listen", "127.0.0.1:9898", "HTTP Port")
 	flag.Parse()
 
 	cfg := config.Get(*hasGraphql, *hasWebsocket)
@@ -155,7 +155,7 @@ func main() {
 
 	})
 
-	err := e.Start("127.0.0.1:" + *httpPort)
+	err := e.Start(*httpListen)
 	if err != nil {
 		println(err)
 	}
