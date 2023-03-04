@@ -7,6 +7,7 @@ type Config struct {
 	RpcAllowedMethods     []string
 	RpcBlacklistedMethods []string
 	HasGraphQL            bool
+	HasWebsocket          bool
 }
 
 func (c *Config) IsAllowedMethod(method string) bool {
@@ -32,7 +33,7 @@ func (c *Config) IsAllowedMethod(method string) bool {
 	return false
 }
 
-func Get(hasGraphQL bool) *Config {
+func Get(hasGraphQL, hasWebsocket bool) *Config {
 	RpcAllowedPrefix := []string{"eth_"}
 	RpcAllowedMethods := []string{"web3_clientVersion", "net_version", "debug_traceTransaction", "debug_dumpBlock", "debug_traceBlock"}
 	RpcBlacklistedMethods := []string{"eth_sendTransaction", "eth_accounts", "eth_sign", "eth_signTransaction", "eth_getWork", "eth_submitWork", "eth_submitHashrate"}
@@ -42,6 +43,7 @@ func Get(hasGraphQL bool) *Config {
 		RpcAllowedMethods:     RpcAllowedMethods,
 		RpcBlacklistedMethods: RpcBlacklistedMethods,
 		HasGraphQL:            hasGraphQL,
+		HasWebsocket:          hasWebsocket,
 	}
 
 }

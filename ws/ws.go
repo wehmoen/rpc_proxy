@@ -10,7 +10,7 @@ import (
 	"rpc-proxy/tools"
 )
 
-func Setup(upgrader websocket.Upgrader, cfg *config.Config) echo.HandlerFunc {
+func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string) echo.HandlerFunc {
 
 	return func(ctx echo.Context) error {
 
@@ -30,7 +30,7 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config) echo.HandlerFunc {
 		for {
 
 			// Create a new WebSocket connection to the upstream server
-			upstreamConn, _, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:8546", nil)
+			upstreamConn, _, err := websocket.DefaultDialer.Dial(upstreamWebsocket, nil)
 			if err != nil {
 				fmt.Println(err)
 				return err

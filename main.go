@@ -36,9 +36,13 @@ func InitValidator() *Validator {
 func main() {
 
 	hasGraphql := flag.Bool("graphql", false, "Enable GraphQL")
+	hasWebsocket := flag.Bool("websocket", false, "Enable Websocket")
+	upstreamRPC := flag.String("upstream", "http://127.0.0.1:8545", "Upstream RPC Host")
+	upstreamWebsocket := flag.String("upstream-ws", "ws://127.0.0.1:8546", "Upstream Websocket Host")
+	httpPort := flag.String("http-port", "9898", "HTTP Port")
 	flag.Parse()
 
-	cfg := config.Get(*hasGraphql)
+	cfg := config.Get(*hasGraphql, *hasWebsocket)
 
 	hitButUnallowedMethods := map[string]int{}
 
@@ -48,12 +52,6 @@ func main() {
 		fmt.Println(fmt.Sprintf("RPC_KONG_SECURITY_KEY is set to: %s", RpcKongSecurityKey))
 	} else {
 		fmt.Println("RPC_KONG_SECURITY_KEY is not set")
-	}
-
-	var upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
 	}
 
 	e := echo.New()
@@ -72,7 +70,16 @@ func main() {
 		})
 	})
 
-	e.GET("/ws", ws.Setup(upgrader, cfg))
+	if cfg.HasWebsocket {
+
+		var upgrader = websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}
+
+		e.GET("/ws", ws.Setup(upgrader, cfg, *upstreamWebsocket))
+	}
 
 	e.GET("/method_stats", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, hitButUnallowedMethods)
@@ -80,7 +87,7 @@ func main() {
 
 	if cfg.HasGraphQL {
 
-		graphQlUIUrl, _ := url.Parse("http://localhost:8545/")
+		graphQlUIUrl, _ := url.Parse(*upstreamRPC)
 		uiProxy := httputil.NewSingleHostReverseProxy(graphQlUIUrl)
 
 		uiProxy.Director = func(req *http.Request) {
@@ -130,7 +137,7 @@ func main() {
 			resp, err := client.R().
 				SetBody(request).
 				SetResult(&jsonValue).
-				Post("http://127.0.0.1:8545")
+				Post(*upstreamRPC)
 
 			if err != nil {
 				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Upstream error: "+err.Error()))
@@ -148,7 +155,7 @@ func main() {
 
 	})
 
-	err := e.Start("127.0.0.1:9898")
+	err := e.Start("127.0.0.1:" + *httpPort)
 	if err != nil {
 		println(err)
 	}
