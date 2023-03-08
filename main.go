@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/go-playground/validator"
@@ -8,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -117,42 +119,83 @@ func main() {
 	}
 
 	e.POST("/", func(ctx echo.Context) error {
+		isBatchRequest := false
 		var request models.GRPCRequest
+		var batchRequest []models.GRPCRequest
+		var jsonValue models.RPCResponse
+		var jsonBatchValue []models.RPCResponse
 
-		err := ctx.Bind(&request)
+		var bodyBytes []byte
+		if ctx.Request().Body != nil {
+			var err error
+			bodyBytes, err = io.ReadAll(ctx.Request().Body)
+			if err != nil {
+				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32600, "Failed to read request body."))
+			}
+		}
+
+		err := json.Unmarshal(bodyBytes, &request)
+
 		if err != nil {
-			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32600, "The JSON sent is not a valid RPC Request."))
+			err = json.Unmarshal(bodyBytes, &batchRequest)
+
+			if err != nil {
+				return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32600, "The JSON sent is not a valid RPC Request."))
+			}
+
+			isBatchRequest = true
 		}
 
 		security := ctx.Request().Header.Get("x-kong-security") == RpcKongSecurityKey
 
-		if security == false && RpcKongSecurityKey != "" {
+		if !security && RpcKongSecurityKey != "" {
 			return ctx.JSON(http.StatusUnauthorized, tools.CreateError(request, -0, http.StatusText(http.StatusUnauthorized)))
 		}
 
-		if cfg.IsAllowedMethod(request.Method) {
+		if isBatchRequest {
+			if len(batchRequest) > 100 {
+				return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32600, "Batch request too long > 100."))
+			}
 
-			var jsonValue models.RPCResponse
+			isValid := true
+			for _, req := range batchRequest {
+				if !cfg.IsAllowedMethod(req.Method) {
+					isValid = false
+					break
+				}
+			}
 
-			resp, err := client.R().
+			if !isValid {
+				return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32601, fmt.Sprintf("The batch request contains an invalid method.")))
+			}
+		}
+
+		if !isBatchRequest && !cfg.IsAllowedMethod(request.Method) {
+			hitButUnallowedMethods[request.Method]++
+			return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32601, fmt.Sprintf("The method %s does not exist or is not available.", request.Method)))
+		}
+
+		if isBatchRequest {
+			_, err = client.R().
+				SetBody(batchRequest).
+				SetResult(&jsonBatchValue).
+				Post(*upstreamRPC)
+		} else {
+			_, err = client.R().
 				SetBody(request).
 				SetResult(&jsonValue).
 				Post(*upstreamRPC)
-
-			if err != nil {
-				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Upstream error: "+err.Error()))
-			}
-
-			if resp.StatusCode() != http.StatusOK {
-				return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Internal error: "+resp.Status()))
-			}
-
-			return ctx.JSON(http.StatusOK, jsonValue)
-		} else {
-			hitButUnallowedMethods[request.Method] = hitButUnallowedMethods[request.Method] + 1
-			return ctx.JSON(http.StatusOK, tools.CreateError(request, -32601, fmt.Sprintf("the method %s does not exist/is not available", request.Method)))
 		}
 
+		if err != nil {
+			return ctx.JSON(http.StatusInternalServerError, tools.CreateError(request, -32603, "Upstream error: "+err.Error()))
+		}
+
+		if isBatchRequest {
+			return ctx.JSON(http.StatusOK, jsonBatchValue)
+		} else {
+			return ctx.JSON(http.StatusOK, jsonValue)
+		}
 	})
 
 	err := e.Start(*httpListen)
