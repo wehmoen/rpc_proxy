@@ -65,10 +65,26 @@ func main() {
 	e.Validator = InitValidator()
 
 	e.GET("/", func(c echo.Context) error {
+
+		var jsonValue models.RPCResponse
+
+		request := models.GRPCRequest{
+			Jsonrpc: "2.0",
+			Method:  "web3_clientVersion",
+			Params:  []interface{}{},
+		}
+
+		_, _ = client.R().
+			SetBody(request).
+			SetResult(&jsonValue).
+			Post(*upstreamRPC)
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"info":             "Ronin RPC Proxy",
 			"allowed_prefixes": cfg.RpcAllowedPrefix,
 			"allowed_methods":  cfg.RpcAllowedMethods,
+			"websocketEnabled": cfg.HasWebsocket,
+			"graphqlEnabled":   cfg.HasGraphQL,
+			"nodeVersion":      jsonValue.Result,
 		})
 	})
 
