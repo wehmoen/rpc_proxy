@@ -8,8 +8,8 @@ type GRPCRequest struct {
 }
 
 type RPCResponse struct {
-	Jsonrpc string      `json:"jsonrpc,omitempty"`
-	Result  interface{} `json:"result,omitempty"`
+	Jsonrpc string      `json:"jsonrpc"`
+	Result  interface{} `json:"result"`
 	Id      int64       `json:"id"`
 }
 
