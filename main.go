@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator"
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
@@ -153,6 +154,7 @@ func main() {
 		err := json.Unmarshal(bodyBytes, &request)
 
 		if err != nil {
+			spew.Dump(err)
 			err = json.Unmarshal(bodyBytes, &batchRequest)
 
 			if err != nil {

@@ -3,6 +3,7 @@ module rpc-proxy
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gorilla/websocket v1.5.0
