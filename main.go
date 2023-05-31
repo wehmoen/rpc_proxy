@@ -45,6 +45,10 @@ func main() {
 	httpListen := flag.String("http-listen", "127.0.0.1:9898", "HTTP Port")
 	flag.Parse()
 
+	httpStats := tools.Request{}
+	wsStats := tools.Request{}
+	disallowedStats := tools.Request{}
+
 	cfg := config.Get(*hasGraphql, *hasWebsocket)
 
 	hitButUnallowedMethods := map[string]int{}
@@ -74,7 +78,7 @@ func main() {
 			Method:  "web3_clientVersion",
 			Params:  []interface{}{},
 		}
-
+		httpStats.Add("web3_clientVersion")
 		_, _ = client.R().
 			SetBody(request).
 			SetResult(&jsonValue).
@@ -97,11 +101,15 @@ func main() {
 			},
 		}
 
-		e.GET("/ws", ws.Setup(upgrader, cfg, *upstreamWebsocket))
+		e.GET("/ws", ws.Setup(upgrader, cfg, *upstreamWebsocket, wsStats))
 	}
 
 	e.GET("/method_stats", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, hitButUnallowedMethods)
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"http":       httpStats,
+			"ws":         wsStats,
+			"disallowed": disallowedStats,
+		})
 	})
 
 	if cfg.HasGraphQL {
@@ -181,6 +189,7 @@ func main() {
 					isValid = false
 					break
 				}
+				httpStats.Add(req.Method)
 			}
 
 			if !isValid {
@@ -190,6 +199,7 @@ func main() {
 
 		if !isBatchRequest && !cfg.IsAllowedMethod(request.Method) {
 			hitButUnallowedMethods[request.Method]++
+			disallowedStats.Add(request.Method)
 			return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32601, fmt.Sprintf("The method %s does not exist or is not available.", request.Method)))
 		}
 
@@ -199,6 +209,7 @@ func main() {
 				SetResult(&jsonBatchValue).
 				Post(*upstreamRPC)
 		} else {
+			httpStats.Add(request.Method)
 			_, err = client.R().
 				SetBody(request).
 				SetResult(&jsonValue).

@@ -10,7 +10,7 @@ import (
 	"rpc-proxy/tools"
 )
 
-func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string) echo.HandlerFunc {
+func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string, stats tools.Request) echo.HandlerFunc {
 
 	return func(ctx echo.Context) error {
 
@@ -56,6 +56,7 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket st
 					}
 
 					if cfg.IsAllowedMethod(rpcRequest.Method) {
+						stats.Add(rpcRequest.Method)
 						if err != nil {
 							fmt.Println(err)
 							return
