@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	cmap "github.com/orcaman/concurrent-map"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -45,9 +46,9 @@ func main() {
 	httpListen := flag.String("http-listen", "127.0.0.1:9898", "HTTP Port")
 	flag.Parse()
 
-	httpStats := tools.Request{}
-	wsStats := tools.Request{}
-	disallowedStats := tools.Request{}
+	httpStats := cmap.New()
+	wsStats := cmap.New()
+	disallowedStats := cmap.New()
 
 	cfg := config.Get(*hasGraphql, *hasWebsocket)
 
@@ -78,7 +79,14 @@ func main() {
 			Method:  "web3_clientVersion",
 			Params:  []interface{}{},
 		}
-		httpStats.Add("web3_clientVersion")
+
+		httpStats.Upsert("web3_clientVersion", 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+			if exist {
+				return valueInMap.(int) + 1
+			}
+			return newValue
+		})
+
 		_, _ = client.R().
 			SetBody(request).
 			SetResult(&jsonValue).
@@ -189,7 +197,12 @@ func main() {
 					isValid = false
 					break
 				}
-				httpStats.Add(req.Method)
+				httpStats.Upsert(req.Method, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+					if exist {
+						return valueInMap.(int) + 1
+					}
+					return newValue
+				})
 			}
 
 			if !isValid {
@@ -199,7 +212,12 @@ func main() {
 
 		if !isBatchRequest && !cfg.IsAllowedMethod(request.Method) {
 			hitButUnallowedMethods[request.Method]++
-			disallowedStats.Add(request.Method)
+			disallowedStats.Upsert(request.Method, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+				if exist {
+					return valueInMap.(int) + 1
+				}
+				return newValue
+			})
 			return ctx.JSON(http.StatusBadRequest, tools.CreateError(request, -32601, fmt.Sprintf("The method %s does not exist or is not available.", request.Method)))
 		}
 
@@ -209,7 +227,12 @@ func main() {
 				SetResult(&jsonBatchValue).
 				Post(*upstreamRPC)
 		} else {
-			httpStats.Add(request.Method)
+			httpStats.Upsert(request.Method, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+				if exist {
+					return valueInMap.(int) + 1
+				}
+				return newValue
+			})
 			_, err = client.R().
 				SetBody(request).
 				SetResult(&jsonValue).

@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	cmap "github.com/orcaman/concurrent-map"
 	"rpc-proxy/config"
 	"rpc-proxy/models"
 	"rpc-proxy/tools"
 )
 
-func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string, stats tools.Request) echo.HandlerFunc {
+func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string, stats cmap.ConcurrentMap) echo.HandlerFunc {
 
 	return func(ctx echo.Context) error {
 
@@ -56,7 +57,12 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket st
 					}
 
 					if cfg.IsAllowedMethod(rpcRequest.Method) {
-						//stats.Add(rpcRequest.Method)
+						stats.Upsert(rpcRequest.Method, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+							if exist {
+								return valueInMap.(int) + 1
+							}
+							return newValue
+						})
 						if err != nil {
 							fmt.Println(err)
 							return
