@@ -56,7 +56,7 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket st
 					}
 
 					if cfg.IsAllowedMethod(rpcRequest.Method) {
-						stats.Add(rpcRequest.Method)
+						//stats.Add(rpcRequest.Method)
 						if err != nil {
 							fmt.Println(err)
 							return
