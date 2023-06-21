@@ -6,8 +6,10 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/labstack/echo/v4 v4.10.2
+	github.com/orcaman/concurrent-map v1.0.0
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/orcaman/concurrent-map v1.0.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.9.0 // indirect

@@ -11,7 +11,7 @@ import (
 	"rpc-proxy/tools"
 )
 
-func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string, stats cmap.ConcurrentMap) echo.HandlerFunc {
+func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket string, stats cmap.ConcurrentMap, tracking *tools.SkyMavisTracking) echo.HandlerFunc {
 
 	return func(ctx echo.Context) error {
 
@@ -68,6 +68,13 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket st
 							return
 						}
 						err = upstreamConn.WriteMessage(msgType, request)
+
+						properties := map[string]string{
+							"method":   rpcRequest.Method,
+							"rpc_type": "websocket",
+						}
+						_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
+
 						if err != nil {
 							fmt.Println(err)
 							return

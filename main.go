@@ -44,6 +44,7 @@ func main() {
 	upstreamRPC := flag.String("upstream", "http://127.0.0.1:8545", "Upstream RPC Host")
 	upstreamWebsocket := flag.String("upstream-ws", "ws://127.0.0.1:8546", "Upstream Websocket Host")
 	httpListen := flag.String("http-listen", "127.0.0.1:9898", "HTTP Port")
+	trackingApiKey := flag.String("tracking-api-key", "", "Tracking API Key")
 	flag.Parse()
 
 	httpStats := cmap.New()
@@ -65,6 +66,12 @@ func main() {
 	e := echo.New()
 
 	client := resty.New()
+
+	var tracking *tools.SkyMavisTracking
+
+	if *trackingApiKey != "" {
+		tracking = tools.NewSkyMavisTracking(*trackingApiKey)
+	}
 
 	e.Use(middleware.Logger())
 
@@ -92,6 +99,8 @@ func main() {
 			SetResult(&jsonValue).
 			Post(*upstreamRPC)
 
+		_, _ = tracking.TrackAPIRequest(c.RealIP(), "/", nil)
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"allowed_prefixes": cfg.RpcAllowedPrefix,
 			"allowed_methods":  cfg.RpcAllowedMethods,
@@ -109,7 +118,7 @@ func main() {
 			},
 		}
 
-		e.GET("/ws", ws.Setup(upgrader, cfg, *upstreamWebsocket, wsStats))
+		e.GET("/ws", ws.Setup(upgrader, cfg, *upstreamWebsocket, wsStats, tracking))
 	}
 
 	e.GET("/method_stats", func(c echo.Context) error {
@@ -222,6 +231,16 @@ func main() {
 		}
 
 		if isBatchRequest {
+
+			for _, req := range batchRequest {
+				properties := map[string]string{
+					"method":   req.Method,
+					"rpc_type": "http",
+				}
+
+				_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
+			}
+
 			_, err = client.R().
 				SetBody(batchRequest).
 				SetResult(&jsonBatchValue).
@@ -237,6 +256,13 @@ func main() {
 				SetBody(request).
 				SetResult(&jsonValue).
 				Post(*upstreamRPC)
+
+			properties := map[string]string{
+				"method":   request.Method,
+				"rpc_type": "http",
+			}
+
+			_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
 		}
 
 		if err != nil {
