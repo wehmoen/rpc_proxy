@@ -14,6 +14,7 @@ import (
 type TrackingEvent struct {
 	UUID             string            `json:"uuid,omitempty"`
 	SessionID        string            `json:"session_id,omitempty"`
+	UserID           string            `json:"user_id,omitempty"`
 	Event            string            `json:"event"`
 	Ref              string            `json:"ref"`
 	Timestamp        string            `json:"timestamp"`
@@ -47,6 +48,7 @@ func NewSkyMavisTracking(apiKey string) *SkyMavisTracking {
 func (s *SkyMavisTracking) Send(event TrackingEvent) (*resty.Response, error) {
 	event.UUID = s.generateUUID(event.Ref)
 	event.SessionID = s.generateUUID(event.UUID)
+	event.UserID = s.generateUUID(event.SessionID)
 
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(s.apiKey + ":"))
 
