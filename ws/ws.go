@@ -73,7 +73,7 @@ func Setup(upgrader websocket.Upgrader, cfg *config.Config, upstreamWebsocket st
 							"method":   rpcRequest.Method,
 							"rpc_type": "websocket",
 						}
-						_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
+						_, _ = tracking.TrackAPIRequest(ctx.RealIP(), rpcRequest.Method, properties)
 
 						if err != nil {
 							fmt.Println(err)

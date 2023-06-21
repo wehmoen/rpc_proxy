@@ -238,7 +238,7 @@ func main() {
 					"rpc_type": "http",
 				}
 
-				_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
+				_, _ = tracking.TrackAPIRequest(ctx.RealIP(), req.Method, properties)
 			}
 
 			_, err = client.R().
@@ -262,7 +262,7 @@ func main() {
 				"rpc_type": "http",
 			}
 
-			_, _ = tracking.TrackAPIRequest(ctx.RealIP(), "/", properties)
+			_, _ = tracking.TrackAPIRequest(ctx.RealIP(), request.Method, properties)
 		}
 
 		if err != nil {
