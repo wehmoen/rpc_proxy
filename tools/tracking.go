@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
+	"os"
 	"time"
 )
 
@@ -20,8 +21,14 @@ type TrackingEvent struct {
 	ActionProperties map[string]string `json:"action_properties,omitempty"`
 }
 
+type eventWrapper struct {
+	Type string        `json:"type"`
+	Data TrackingEvent `json:"data"`
+}
+
 type trackingRequest struct {
-	Events []TrackingEvent `json:"events"`
+	Events []eventWrapper `json:"events"`
+	ApiKey string         `json:"api_key"`
 }
 
 // SkyMavisTracking represents the SkyMavis tracking object.
@@ -47,9 +54,20 @@ func (s *SkyMavisTracking) Send(event TrackingEvent) (*resty.Response, error) {
 		SetHeader("Authorization", "Basic "+basicAuth).
 		SetHeader("Content-Type", "application/json").
 		SetBody(trackingRequest{
-			Events: []TrackingEvent{event},
+			ApiKey: s.apiKey,
+			Events: []eventWrapper{
+				{
+					Type: "track",
+					Data: event,
+				},
+			},
 		}).
 		Post("https://x.skymavis.com/track")
+
+	if os.Getenv("DEBUG") == "true" {
+		println("Status code: " + resp.Status())
+		println("Result: " + string(resp.Body()))
+	}
 
 	return resp, err
 }
