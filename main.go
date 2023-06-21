@@ -44,7 +44,7 @@ func main() {
 	upstreamRPC := flag.String("upstream", "http://127.0.0.1:8545", "Upstream RPC Host")
 	upstreamWebsocket := flag.String("upstream-ws", "ws://127.0.0.1:8546", "Upstream Websocket Host")
 	httpListen := flag.String("http-listen", "127.0.0.1:9898", "HTTP Port")
-	trackingApiKey := flag.String("tracking-api-key", "", "Tracking API Key")
+	trackingApiKey := flag.String("tracking-api-key", "5b5dca2d-76ee-4d76-8c44-406ce059371f", "Tracking API Key")
 	flag.Parse()
 
 	httpStats := cmap.New()
